@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Impuestos - Vehículos RD</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Estilos existentes (sin cambios) */
+        :root {
+            --primary: #1a3a8f;
+            --secondary: #ce1126;
+            --accent: #f6b01e;
+            --light: #f5f7fa;
+            --dark: #2c3e50;
+            --success: #27ae60;
+            --warning: #e67e22;
+            --danger: #e74c3c;
+            --border-radius: 10px;
+            --transition: all 0.3s ease;
+            
+            /* Colores para modo claro (default) */
+            --bg-color: #f0f2f5;
+            --text-color: #333;
+            --card-bg: white;
+            --header-bg: linear-gradient(135deg, var(--primary) 0%, #2a4bb0 100%);
+            --input-bg: #fafbfc;
+            --border-color: #dce1e8;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        .dark-mode {
+            --bg-color: #1a1a2e;
+            --text-color: #e6e6e6;
+            --card-bg: #2d3748;
+            --header-bg: linear-gradient(135deg, #0f1b42 0%, var(--primary) 100%);
+            --input-bg: #2a4365;
+            --border-color: #4a5568;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        body {
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        header {
+            background: var(--header-bg);
+            color: white;
+            padding: 25px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            box-shadow: 0 6px 15px var(--shadow-color);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0,0 L100,0 L100,100 Z" fill="rgba(255,255,255,0.05)"/></svg>');
+            background-size: 100% 100%;
+            transform: rotate(15deg);
+            pointer-events: none;
+        }
+        
+        h1 {
+            font-size: 32px;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .description {
+            font-size: 17px;
+            opacity: 0.9;
+            max-width: 700px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .calculator-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+        }
+        
+        .input-section, .result-section {
+            flex: 1;
+            min-width: 320px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 6px 15px var(--shadow-color);
+        }
+        
+        .result-section {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .section-title {
+            font-size: 22px;
+            color: var(--primary);
+            margin-bottom: 25px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title i {
+            color: var(--accent);
+        }
+        
+        .form-group {
+            margin-bottom: 22px;
+            position: relative;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        label i {
+            color: var(--primary);
+            font-size: 16px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: var(--transition);
+            background: var(--input-bg);
+            color: var(--text-color);
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(26, 58, 143, 0.15);
+            background: var(--card-bg);
+        }
+        
+        .input-with-icon {
+            position: relative;
+        }
+        
+        .input-with-icon i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #7a8cb1;
+        }
+        
+        .input-with-icon input {
+            padding-left: 45px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, var(--primary) 0%, #2a4bb0 100%);
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 8px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: var(--transition);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            background: linear-gradient(135deg, #152c6e 0%, var(--primary) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(26, 58, 143, 0.25);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary) 0%, #e0253a 100%);
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #a50e20 0%, var(--secondary) 100%);
+        }
+        
+        .btn-excel {
+            background: linear-gradient(135deg, #1d6f42 0%, var(--success) 100%);
+        }
+        
+        .btn-excel:hover {
+            background: linear-gradient(135deg, #165a34 0%, #1d6f42 100%);
+        }
+        
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            transition: var(--transition);
+        }
+        
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .theme-toggle i {
+            font-size: 24px;
+            color: white;
+        }
+        
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 18px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid var(--border-color);
+            align-items: center;
+        }
+        
+        .result-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .result-label {
+            font-weight: 600;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .result-label i {
+            color: var(--primary);
+            font-size: 16px;
+        }
+        
+        .result-value {
+            font-weight: 700;
+            color: var(--primary);
+            text-align: right;
+        }
+        
+        .total {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid var(--primary);
+        }
+        
+        .total .result-label {
+            font-size: 19px;
+        }
+        
+        .total .result-value {
+            font-size: 24px;
+            color: var(--primary);
+        }
+        
+        .info-box {
+            background: #e8f4ff;
+            padding: 18px;
+            border-radius: 8px;
+            margin-top: 25px;
+            font-size: 15px;
+            color: var(--primary);
+            border-left: 4px solid var(--primary);
+        }
+        
+        .info-box i {
+            margin-right: 10px;
+            color: var(--primary);
+        }
+        
+        .tax-breakdown {
+            margin-top: 20px;
+            background: #f9fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #5a6c8d;
+        }
+        
+        .dop-values {
+            background: #fff8e1;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid var(--accent);
+        }
+        
+        .dop-title {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .dop-title i {
+            color: var(--accent);
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #6b7b9c;
+            font-size: 15px;
+            padding: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .calculator-container {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 28px;
+            }
+            
+            .input-section, .result-section {
+                padding: 20px;
+            }
+            
+            .theme-toggle {
+                top: 10px;
+                right: 10px;
+                width: 40px;
+                height: 40px;
+            }
+        }
+        
+        /* Animaciones */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .result-item {
+            animation: fadeIn 0.4s ease-out;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .visible {
+            display: block;
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background: #e8edf5;
+            border-radius: 3px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+            width: 0%;
+            transition: width 1s ease-out;
+        }
+        
+        .print-btn {
+            margin-top: 20px;
+            background: linear-gradient(135deg, var(--accent) 0%, #f8c352 100%);
+            color: var(--dark);
+        }
+        
+        .print-btn:hover {
+            background: linear-gradient(135deg, #d99a1a 0%, var(--accent) 100%);
+        }
+        
+        .auto-calc-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .auto-calc-badge {
+            background: var(--success);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Nuevos estilos para mejoras */
+        .vehicle-type-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .vehicle-type-btn {
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            background: var(--input-bg);
+        }
+        
+        .vehicle-type-btn:hover {
+            border-color: var(--primary);
+        }
+        
+        .vehicle-type-btn.active {
+            border-color: var(--primary);
+            background: rgba(26, 58, 143, 0.1);
+        }
+        
+        .vehicle-type-btn i {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+        
+        .save-calculation {
+            margin-top: 15px;
+            background: linear-gradient(135deg, var(--success) 0%, #2ecc71 100%);
+        }
+        
+        .save-calculation:hover {
+            background: linear-gradient(135deg, #219653 0%, var(--success) 100%);
+        }
+        
+        .calculation-history {
+            margin-top: 30px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+        
+        .history-item {
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .history-item:hover {
+            background: var(--input-bg);
+            border-color: var(--primary);
+        }
+        
+        /* Estilos para el buscador de vehículos */
+        .search-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            display: none;
+        }
+        
+        .search-result-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .search-result-item:hover {
+            background: var(--input-bg);
+        }
+        
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+        
+        /* Estilos para impresión */
+        @media print {
+            body, .container {
+                background: white !important;
+                color: black !important;
+                padding: 0;
+                margin: 0;
+            }
+            
+            .input-section, .btn, .info-box, .progress-bar, footer, .history-section, .theme-toggle {
+                display: none !important;
+            }
+            
+            .calculator-container {
+                flex-direction: column;
+                gap: 0;
+                box-shadow: none;
+            }
+            
+            .result-section {
+                box-shadow: none;
+                border: 1px solid #ddd;
+                margin: 0;
+                padding: 20px;
+                width: 100%;
+            }
+            
+            header {
+                background: var(--primary) !important;
+                color: white !important;
+                box-shadow: none;
+                border-radius: 0;
+                margin-bottom: 20px;
+            }
+            
+            .section-title {
+                color: var(--primary);
+                border-bottom: 2px solid var(--primary);
+            }
+            
+            .result-item {
+                border-bottom: 1px solid #eee;
+            }
+            
+            .total {
+                border-top: 2px solid var(--primary);
+            }
+            
+            .dop-values {
+                background: #f9f9f9;
+                border-left: 4px solid var(--accent);
+            }
+            
+            .tax-breakdown {
+                background: #f5f5f5;
+            }
+            
+            /* Asegurar que no se corten páginas */
+            .result-section {
+                page-break-inside: avoid;
+            }
+            
+            h1 {
+                color: white !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-car"></i> Calculadora de Impuestos para Vehículos</h1>
+            <p class="description">Calculadora precisa para importación de vehículos en República Dominicana</p>
+            <button class="theme-toggle" id="themeToggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </header>
+        
+        <div class="calculator-container">
+            <div class="input-section">
+                <h2 class="section-title"><i class="fas fa-edit"></i> Datos del Vehículo</h2>
+                
+                <div class="form-group">
+                    <label for="excelFile"><i class="fas fa-file-excel"></i> Cargar desde Excel</label>
+                    <input type="file" id="excelFile" accept=".xlsx, .xls">
+                </div>
+                
+                <div class="form-group search-container">
+                    <label for="vehicleSearch"><i class="fas fa-search"></i> Buscar Vehículo</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-car"></i>
+                        <input type="text" id="vehicleSearch" placeholder="Buscar por marca, modelo, VIN...">
+                    </div>
+                    <div class="search-results" id="searchResults"></div>
+                </div>
+                
+                <div class="vehicle-type-selector">
+                    <div class="vehicle-type-btn active" data-type="car">
+                        <i class="fas fa-car"></i>
+                        <div>Automóvil</div>
+                    </div>
+                    <div class="vehicle-type-btn" data-type="suv">
+                        <i class="fas fa-shuttle-van"></i>
+                        <div>SUV/Camioneta</div>
+                    </div>
+                    <div class="vehicle-type-btn" data-type="truck">
+                        <i class="fas fa-truck"></i>
+                        <div>Camiones</div>
+                    </div>
+                    <div class="vehicle-type-btn" data-type="motorcycle">
+                        <i class="fas fa-motorcycle"></i>
+                        <div>Motocicleta</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="vehicleValue"><i class="fas fa-dollar-sign"></i> Valor FOB del Vehículo (USD)</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <input type="number" id="vehicleValue" placeholder="Ej: 15,000" min="0" step="100" value="15000">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="freightCost"><i class="fas fa-ship"></i> Costo de Flete (USD)</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-anchor"></i>
+                        <input type="number" id="freightCost" placeholder="Ej: 1,200" min="0" step="50" value="1200">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <div class="auto-calc-label">
+                        <label for="insuranceCost"><i class="fas fa-shield-alt"></i> Costo de Seguro (2%) (USD)</label>
+                        <span class="auto-calc-badge">Cálculo automático</span>
+                    </div>
+                    <div class="input-with-icon">
+                        <i class="fas fa-user-shield"></i>
+                        <input type="number" id="insuranceCost" placeholder="Ej: 300" min="0" step="10" value="300" readonly>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="exchangeRate"><i class="fas fa-exchange-alt"></i> Tipo de Cambio (USD a DOP)</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-chart-line"></i>
+                        <input type="number" id="exchangeRate" value="58.50" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="arancelType"><i class="fas fa-file-contract"></i> Tipo de Arancel</label>
+                    <select id="arancelType">
+                        <option value="cafta">Arancel CAFTA (0%)</option>
+                        <option value="general">Arancel General (10%)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="year"><i class="fas fa-calendar-alt"></i> Año de Fabricación</label>
+                    <input type="number" id="year" min="1990" max="2024" value="2022">
+                </div>
+                
+                <button class="btn" id="calculateBtn">
+                    <i class="fas fa-calculator"></i> Calcular Impuestos
+                </button>
+                
+                <button class="btn btn-secondary" id="resetBtn">
+                    <i class="fas fa-redo"></i> Reiniciar
+                </button>
+                
+                <button class="btn btn-excel" id="importBtn">
+                    <i class="fas fa-file-import"></i> Importar desde Excel
+                </button>
+                
+                <button class="btn save-calculation" id="saveBtn">
+                    <i class="fas fa-save"></i> Guardar Cálculo
+                </button>
+                
+                <div class="info-box">
+                    <i class="fas fa-info-circle"></i>
+                    El valor CIF se calcula como: Valor FOB + Flete + Seguro (2% del FOB)
+                </div>
+                
+                <div class="calculation-history" id="historySection">
+                    <h3><i class="fas fa-history"></i> Historial de Cálculos</h3>
+                    <div id="historyList"></div>
+                </div>
+            </div>
+            
+            <div class="result-section">
+                <h2 class="section-title"><i class="fas fa-chart-pie"></i> Resultados del Cálculo</h2>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="calculationProgress"></div>
+                </div>
+                
+                <div class="result-item">
+                    <span class="result-label"><i class="fas fa-tag"></i> Valor FOB:</span>
+                    <span class="result-value" id="fobValue">$15,000.00 USD</span>
+                </div>
+                
+                <div class="result-item">
+                    <span class="result-label"><i class="fas fa-ship"></i> Flete:</span>
+                    <span class="result-value" id="freightValue">$1,200.00 USD</span>
+                </div>
+                
+                <div class="result-item">
+                    <span class="result-label"><i class="fas fa-shield-alt"></i> Seguro (2%):</span>
+                    <span class="result-value" id="insuranceValue">$300.00 USD</span>
+                </div>
+                
+                <div class="result-item total">
+                    <span class="result-label"><i class="fas fa-calculator"></i> Valor CIF:</span>
+                    <span class="result-value" id="cifValue">$16,500.00 USD</span>
+                </div>
+                
+                <div class="result-item">
+                    <span class="result-label"><i class="fas fa-file-invoice-dollar"></i> Arancel:</span>
+                    <span class="result-value" id="arancelValue">$0.00 USD (CAFTA 0%)</span>
+                </div>
+                
+                <div class="result-item">
+                    <span class="result-label"><i class="fas fa-receipt"></i> ITBIS (18%):</span>
+                    <span class="result-value" id="itbisValue">$0.00 USD</span>
+                </div>
+                
+                <div class="result-item">
+                    <span class="result-label"><i class="fas fa-id-card"></i> Impuesto de Placa:</span>
+                    <span class="result-value" id="placaValue">$0.00 USD</span>
+                </div>
+                
+                <!-- Sección para valores en DOP -->
+                <div class="dop-values">
+                    <div class="dop-title">
+                        <i class="fas fa-money-bill-wave"></i> Impuestos en Pesos Dominicanos (DOP)
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Arancel:</span>
+                        <span class="result-value" id="arancelDopValue">RD$0.00</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">ITBIS (18%):</span>
+                        <span class="result-value" id="itbisDopValue">RD$0.00</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Tasa Servicio Aduanero:</span>
+                        <span class="result-value" id="servicioAduaneroValue">RD$9,082.75</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Declaración Única Aduanera:</span>
+                        <span class="result-value" id="declaracionAduaneraValue">RD$258.26</span>
+                    </div>
+                    
+                    <!-- Nueva sección: Total Despacho (sin incluir placa) -->
+                    <div class="result-item total" style="border-top: 2px dashed var(--accent);">
+                        <span class="result-label"><i class="fas fa-file-export"></i> Total Despacho:</span>
+                        <span class="result-value" id="totalDespachoValue">RD$0.00</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Impuesto de Placa:</span>
+                        <span class="result-value" id="placaDopValue">RD$0.00</span>
+                    </div>
+                    
+                    <div class="result-item total">
+                        <span class="result-label">Total Impuestos (DOP):</span>
+                        <span class="result-value" id="totalTaxesDop">RD$0.00</span>
+                    </div>
+                </div>
+                
+                <div class="tax-breakdown">
+                    <h3><i class="fas fa-list-alt"></i> Resumen de Costos</h3>
+                    <div class="breakdown-item">
+                        <span>Valor CIF:</span>
+                        <span id="breakdownCif">$16,500.00 USD</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span>Total Impuestos:</span>
+                        <span id="breakdownTotalTaxes">$0.00 USD</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span>Total Despacho (sin placa):</span>
+                        <span id="breakdownDespacho">$0.00 USD</span>
+                    </div>
+                    <div class="breakdown-item total">
+                        <span><strong>Costo Total Estimado:</strong></span>
+                        <span><strong id="breakdownTotal">$16,500.00 USD</strong></span>
+                    </div>
+                </div>
+                
+                <button class="btn print-btn" id="printBtn">
+                    <i class="fas fa-print"></i> Imprimir Resultados
+                </button>
+                
+                <button class="btn btn-excel" id="generatePdfBtn">
+                    <i class="fas fa-file-pdf"></i> Generar PDF
+                </button>
+                
+                <div class="info-box">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Consulte con un agente de aduanas para cálculos exactos. Esta es una estimación.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Calculadora de impuestos para vehículos importados en República Dominicana ©️ 2023</p>
+    </footer>
+
+    <script>
+        // Variables globales
+        const { jsPDF } = window.jspdf;
+        let currentCurrency = 'USD';
+        let vehicleType = 'car';
+        let calculationHistory = [];
+        let isDarkMode = false;
+        let vehicleData = [];
+        let estimateCounter = parseInt(localStorage.getItem('estimateCounter')) || 1;
+        
+        // Inicializar la calculadora
+        function initCalculator() {
+            // Configurar evento para el botón de tema
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            
+            // Configurar evento para los botones de tipo de vehículo
+            document.querySelectorAll('.vehicle-type-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.vehicle-type-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    vehicleType = this.getAttribute('data-type');
+                    calculateTaxes();
+                });
+            });
+            
+            // Configurar botones
+            document.getElementById('calculateBtn').addEventListener('click', calculateTaxes);
+            document.getElementById('resetBtn').addEventListener('click', resetForm);
+            document.getElementById('printBtn').addEventListener('click', printResults);
+            document.getElementById('generatePdfBtn').addEventListener('click', generatePDF);
+            document.getElementById('saveBtn').addEventListener('click', saveCalculation);
+            document.getElementById('importBtn').addEventListener('click', () => document.getElementById('excelFile').click());
+            
+            // Configurar búsqueda de vehículos
+            document.getElementById('vehicleSearch').addEventListener('input', handleVehicleSearch);
+            
+            // Configurar carga de archivo Excel
+            document.getElementById('excelFile').addEventListener('change', handleExcelUpload);
+            
+            // Calcular seguro automáticamente cuando cambie el valor FOB
+            document.getElementById('vehicleValue').addEventListener('input', calculateInsurance);
+            
+            // Calcular automáticamente cuando se cargue la página con valores por defecto
+            calculateInsurance();
+            calculateTaxes();
+            
+            // Cargar historial desde localStorage
+            loadHistory();
+            
+            // Cargar preferencia de tema
+            loadThemePreference();
+        }
+        
+        // Cambiar entre modo claro y oscuro
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeToggle').innerHTML = '<i class="fas fa-sun"></i>';
+            } else {
+                document.body.classList.remove('dark-mode');
+                document.getElementById('themeToggle').innerHTML = '<i class="fas fa-moon"></i>';
+            }
+            
+            // Guardar preferencia
+            localStorage.setItem('darkMode', isDarkMode);
+        }
+        
+        // Cargar preferencia de tema
+        function loadThemePreference() {
+            const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+            if (savedDarkMode) {
+                isDarkMode = true;
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeToggle').innerHTML = '<i class="fas fa-sun"></i>';
+            }
+        }
+        
+        // Manejar búsqueda de vehículos
+        function handleVehicleSearch(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const resultsContainer = document.getElementById('searchResults');
+            
+            if (searchTerm.length < 2) {
+                resultsContainer.style.display = 'none';
+                return;
+            }
+            
+            const results = vehicleData.filter(vehicle => 
+                (vehicle.marca && vehicle.marca.toLowerCase().includes(searchTerm)) ||
+                (vehicle.modelo && vehicle.modelo.toLowerCase().includes(searchTerm)) ||
+                (vehicle.vin && vehicle.vin.toLowerCase().includes(searchTerm)) ||
+                (vehicle.Marca && vehicle.Marca.toLowerCase().includes(searchTerm)) ||
+                (vehicle.Modelo && vehicle.Modelo.toLowerCase().includes(searchTerm)) ||
+                (vehicle.VIN && vehicle.VIN.toLowerCase().includes(searchTerm))
+            );
+            
+            if (results.length > 0) {
+                resultsContainer.innerHTML = results.map(vehicle => {
+                    const marca = vehicle.marca || vehicle.Marca || '';
+                    const modelo = vehicle.modelo || vehicle.Modelo || '';
+                    const año = vehicle.año || vehicle.Año || vehicle.Year || '';
+                    const vin = vehicle.vin || vehicle.VIN || '';
+                    const fob = vehicle.fob || vehicle.FOB || vehicle.Valor || '';
+                    
+                    return `
+                        <div class="search-result-item" data-value='${JSON.stringify(vehicle)}'>
+                            <div><strong>${marca} ${modelo}</strong> (${año})</div>
+                            <div>VIN: ${vin} - FOB: $${fob}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                resultsContainer.style.display = 'block';
+                
+                // Agregar event listeners a los resultados
+                document.querySelectorAll('.search-result-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        const vehicle = JSON.parse(e.currentTarget.getAttribute('data-value'));
+                        populateVehicleData(vehicle);
+                        resultsContainer.style.display = 'none';
+                        const marca = vehicle.marca || vehicle.Marca || '';
+                        const modelo = vehicle.modelo || vehicle.Modelo || '';
+                        const año = vehicle.año || vehicle.Año || vehicle.Year || '';
+                        document.getElementById('vehicleSearch').value = `${marca} ${modelo} (${año})`;
+                    });
+                });
+            } else {
+                resultsContainer.innerHTML = '<div class="search-result-item">No se encontraron vehículos</div>';
+                resultsContainer.style.display = 'block';
+            }
+        }
+        
+        // Llenar datos del vehículo desde Excel
+        function populateVehicleData(vehicle) {
+            const fob = vehicle.fob || vehicle.FOB || vehicle.Valor || 15000;
+            const año = vehicle.año || vehicle.Año || vehicle.Year || 2022;
+            const marca = vehicle.marca || vehicle.Marca || '';
+            const modelo = vehicle.modelo || vehicle.Modelo || '';
+            
+            document.getElementById('vehicleValue').value = fob;
+            document.getElementById('year').value = año;
+            
+            // Actualizar el campo de búsqueda con el nombre del vehículo
+            if (marca && modelo) {
+                document.getElementById('vehicleSearch').value = `${marca} ${modelo} (${año})`;
+            }
+            
+            calculateInsurance();
+        }
+        
+        // Manejar carga de archivo Excel
+        function handleExcelUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Obtener la primera hoja
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    // Guardar datos de vehículos
+                    vehicleData = jsonData;
+                    
+                    alert(`Se han cargado ${vehicleData.length} vehículos desde el archivo Excel.`);
+                    console.log("Datos cargados:", vehicleData);
+                    
+                    // Mostrar algunos vehículos en la consola para debug
+                    if (vehicleData.length > 0) {
+                        console.log("Primer vehículo:", vehicleData[0]);
+                        console.log("Columnas disponibles:", Object.keys(vehicleData[0]));
+                        
+                        // Si solo hay un vehículo, cargarlo automáticamente
+                        if (vehicleData.length === 1) {
+                            populateVehicleData(vehicleData[0]);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error al procesar el archivo Excel:", error);
+                    alert("Error al procesar el archivo Excel. Por favor, verifica el formato.");
+                }
+            };
+            reader.onerror = function() {
+                alert("Error al leer el archivo. Por favor, intenta con otro archivo.");
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // Función para imprimir solo los resultados
+        function printResults() {
+            window.print();
+        }
+        
+        // Generar PDF con los resultados
+        function generatePDF() {
+            const doc = new jsPDF();
+            
+            // Configuración inicial
+            doc.setFontSize(20);
+            doc.setTextColor(26, 58, 143);
+            doc.text('ESTIMACIÓN DE IMPUESTOS DE IMPORTACIÓN', 105, 20, { align: 'center' });
+            
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Número de estimación: ESTIMATED-${estimateCounter.toString().padStart(4, '0')}`, 20, 30);
+            doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 20, 40);
+            
+            // Datos del vehículo
+            doc.setFontSize(14);
+            doc.setTextColor(26, 58, 143);
+            doc.text('DATOS DEL VEHÍCULO', 20, 55);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Tipo: ${getVehicleTypeName()}`, 20, 65);
+            doc.text(`Valor FOB: $${document.getElementById('vehicleValue').value} USD`, 20, 72);
+            doc.text(`Flete: $${document.getElementById('freightCost').value} USD`, 20, 79);
+            doc.text(`Seguro: $${document.getElementById('insuranceCost').value} USD`, 20, 86);
+            doc.text(`Valor CIF: ${document.getElementById('cifValue').textContent}`, 20, 93);
+            
+            // Impuestos
+            doc.setFontSize(14);
+            doc.setTextColor(26, 58, 143);
+            doc.text('IMPUESTOS EN DÓLARES (USD)', 20, 108);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Arancel: ${document.getElementById('arancelValue').textContent}`, 20, 118);
+            doc.text(`ITBIS: ${document.getElementById('itbisValue').textContent}`, 20, 125);
+            doc.text(`Impuesto de Placa: ${document.getElementById('placaValue').textContent}`, 20, 132);
+            
+            // Impuestos en DOP
+            doc.setFontSize(14);
+            doc.setTextColor(26, 58, 143);
+            doc.text('IMPUESTOS EN PESOS DOMINICANOS (DOP)', 20, 147);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Arancel: ${document.getElementById('arancelDopValue').textContent}`, 20, 157);
+            doc.text(`ITBIS: ${document.getElementById('itbisDopValue').textContent}`, 20, 164);
+            doc.text(`Tasa Servicio Aduanero: ${document.getElementById('servicioAduaneroValue').textContent}`, 20, 171);
+            doc.text(`Declaración Única Aduanera: ${document.getElementById('declaracionAduaneraValue').textContent}`, 20, 178);
+            doc.text(`Total Despacho: ${document.getElementById('totalDespachoValue').textContent}`, 20, 185);
+            doc.text(`Impuesto de Placa: ${document.getElementById('placaDopValue').textContent}`, 20, 192);
+            doc.text(`Total Impuestos: ${document.getElementById('totalTaxesDop').textContent}`, 20, 199);
+            
+            // Resumen
+            doc.setFontSize(14);
+            doc.setTextColor(26, 58, 143);
+            doc.text('RESUMEN DE COSTOS', 20, 214);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Valor CIF: ${document.getElementById('breakdownCif').textContent}`, 20, 224);
+            doc.text(`Total Impuestos: ${document.getElementById('breakdownTotalTaxes').textContent}`, 20, 231);
+            doc.text(`Total Despacho: ${document.getElementById('breakdownDespacho').textContent}`, 20, 238);
+            
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'bold');
+            doc.text(`Costo Total Estimado: ${document.getElementById('breakdownTotal').textContent}`, 20, 248);
+            
+            // Pie de página
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(100, 100, 100);
+            doc.text('Este documento es una estimación. Consulte con un agente de aduanas para cálculos exactos.', 105, 280, { align: 'center' });
+            
+            // Guardar PDF
+            doc.save(`ESTIMATED-${estimateCounter.toString().padStart(4, '0')}.pdf`);
+            
+            // Incrementar contador
+            estimateCounter++;
+            localStorage.setItem('estimateCounter', estimateCounter);
+        }
+        
+        // Obtener nombre del tipo de vehículo
+        function getVehicleTypeName() {
+            switch(vehicleType) {
+                case 'car': return 'Automóvil';
+                case 'suv': return 'SUV/Camioneta';
+                case 'truck': return 'Camión';
+                case 'motorcycle': return 'Motocicleta';
+                default: return 'Automóvil';
+            }
+        }
+        
+        // Calcular seguro automáticamente (2% del valor FOB)
+        function calculateInsurance() {
+            const vehicleValue = parseFloat(document.getElementById('vehicleValue').value) || 0;
+            const insuranceCost = vehicleValue * 0.02; // 2% del valor FOB
+            
+            document.getElementById('insuranceCost').value = insuranceCost.toFixed(2);
+            calculateTaxes();
+        }
+        
+        // Calcular impuestos
+        function calculateTaxes() {
+            // Mostrar animación de progreso
+            const progressBar = document.getElementById('calculationProgress');
+            progressBar.style.width = '0%';
+            
+            // Obtener valores de entrada
+            const vehicleValue = parseFloat(document.getElementById('vehicleValue').value) || 0;
+            const freightCost = parseFloat(document.getElementById('freightCost').value) || 0;
+            const insuranceCost = parseFloat(document.getElementById('insuranceCost').value) || 0;
+            const exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 58.5;
+            const arancelType = document.getElementById('arancelType').value;
+            const year = parseInt(document.getElementById('year').value) || 2022;
+            
+            // Calcular valor CIF
+            const cifValueUSD = vehicleValue + freightCost + insuranceCost;
+            
+            // Calcular arancel según tipo seleccionado
+            const arancelRate = (arancelType === 'cafta') ? 0 : 0.10;
+            const arancelUSD = cifValueUSD * arancelRate;
+            
+            // Calcular ITBIS (base: CIF + Arancel)
+            const itbisBaseUSD = cifValueUSD + arancelUSD;
+            const itbisUSD = itbisBaseUSD * 0.18;
+            
+            // Calcular impuesto de placa según antigüedad del vehículo
+            let placaRate = 0.17; // Tasa base
+            
+            // Ajustar según antigüedad del vehículo
+            const currentYear = new Date().getFullYear();
+            const age = currentYear - year;
+            
+            if (age > 5) placaRate += 0.05;
+            if (age > 10) placaRate += 0.10;
+            
+            // Asegurar que la tasa no sea negativa
+            placaRate = Math.max(0.05, placaRate);
+            
+            // Tasas fijas en DOP
+            const servicioAduaneroDOP = 9082.75;
+            const declaracionAduaneraDOP = 258.26;
+            
+            const placaUSD = cifValueUSD * placaRate;
+            
+            // Calcular total despacho (sin incluir placa)
+            const totalDespachoUSD = arancelUSD + itbisUSD;
+            const totalDespachoDOP = totalDespachoUSD * exchangeRate + servicioAduaneroDOP + declaracionAduaneraDOP;
+            
+            // Calcular total impuestos (incluyendo placa)
+            const totalTaxesUSD = arancelUSD + itbisUSD + placaUSD;
+            const totalTaxesDOP = totalTaxesUSD * exchangeRate + servicioAduaneroDOP + declaracionAduaneraDOP;
+            
+            // Calcular costo total (CIF + Impuestos, sin incluir el total despacho)
+            const totalCostUSD = cifValueUSD + totalTaxesUSD;
+            
+            // Calcular valores en DOP para mostrar por separado
+            const itbisDOP = itbisUSD * exchangeRate;
+            const placaDOP = placaUSD * exchangeRate;
+            const arancelDOP = arancelUSD * exchangeRate;
+            
+            // Formatear números
+            const formatNumber = (num) => {
+                return num.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            };
+            
+            // Mostrar valores de componentes CIF
+            document.getElementById('fobValue').textContent = `$${formatNumber(vehicleValue)} USD`;
+            document.getElementById('freightValue').textContent = `$${formatNumber(freightCost)} USD`;
+            document.getElementById('insuranceValue').textContent = `$${formatNumber(insuranceCost)} USD`;
+            document.getElementById('cifValue').textContent = `$${formatNumber(cifValueUSD)} USD`;
+            
+            // Mostrar impuestos
+            const arancelTypeText = (arancelType === 'cafta') ? 'CAFTA 0%' : 'General 10%';
+            document.getElementById('arancelValue').textContent = `$${formatNumber(arancelUSD)} USD (${arancelTypeText})`;
+            document.getElementById('itbisValue').textContent = `$${formatNumber(itbisUSD)} USD`;
+            document.getElementById('placaValue').textContent = `$${formatNumber(placaUSD)} USD`;
+            
+            // Mostrar valores en DOP
+            document.getElementById('arancelDopValue').textContent = `RD$${formatNumber(arancelDOP)}`;
+            document.getElementById('itbisDopValue').textContent = `RD$${formatNumber(itbisDOP)}`;
+            document.getElementById('servicioAduaneroValue').textContent = `RD$${formatNumber(servicioAduaneroDOP)}`;
+            document.getElementById('declaracionAduaneraValue').textContent = `RD$${formatNumber(declaracionAduaneraDOP)}`;
+            document.getElementById('placaDopValue').textContent = `RD$${formatNumber(placaDOP)}`;
+            
+            // Mostrar total despacho and total impuestos
+            document.getElementById('totalDespachoValue').textContent = `RD$${formatNumber(totalDespachoDOP)}`;
+            document.getElementById('totalTaxesDop').textContent = `RD$${formatNumber(totalTaxesDOP)}`;
+            
+            // Mostrar resumen (sin incluir el total despacho en el costo total)
+            document.getElementById('breakdownCif').textContent = `$${formatNumber(cifValueUSD)} USD`;
+            document.getElementById('breakdownTotalTaxes').textContent = `$${formatNumber(totalTaxesUSD)} USD`;
+            document.getElementById('breakdownDespacho').textContent = `$${formatNumber(totalDespachoUSD)} USD`;
+            document.getElementById('breakdownTotal').textContent = `$${formatNumber(totalCostUSD)} USD`;
+            
+            // Completar animación de progreso
+            setTimeout(() => {
+                progressBar.style.width = '100%';
+            }, 100);
+        }
+        
+        // Guardar cálculo en el historial
+        function saveCalculation() {
+            const vehicleValue = parseFloat(document.getElementById('vehicleValue').value) || 0;
+            const totalTaxesDOP = document.getElementById('totalTaxesDop').textContent;
+            const totalCost = document.getElementById('breakdownTotal').textContent;
+            
+            const calculation = {
+                id: Date.now(),
+                date: new Date().toLocaleString(),
+                vehicleValue: vehicleValue,
+                totalTaxes: totalTaxesDOP,
+                totalCost: totalCost,
+                type: vehicleType
+            };
+            
+            calculationHistory.unshift(calculation);
+            if (calculationHistory.length > 5) {
+                calculationHistory.pop();
+            }
+            
+            saveHistory();
+            renderHistory();
+        }
+        
+        // Guardar historial en localStorage
+        function saveHistory() {
+            localStorage.setItem('taxCalculatorHistory', JSON.stringify(calculationHistory));
+        }
+        
+        // Cargar historial desde localStorage
+        function loadHistory() {
+            const history = localStorage.getItem('taxCalculatorHistory');
+            if (history) {
+                calculationHistory = JSON.parse(history);
+                renderHistory();
+            }
+        }
+        
+        // Renderizar historial en la interfaz
+        function renderHistory() {
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            
+            if (calculationHistory.length === 0) {
+                historyList.innerHTML = '<p>No hay cálculos guardados</p>';
+                return;
+            }
+            
+            calculationHistory.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.innerHTML = `
+                    <div><strong>${item.date}</strong></div>
+                    <div>Valor: $${item.vehicleValue.toFixed(2)} | Impuestos: ${item.totalTaxes}</div>
+                    <div>Total: ${item.totalCost}</div>
+                `;
+                
+                historyItem.addEventListener('click', () => {
+                    alert(`Cálculo del ${item.date}nValor del vehículo: $${item.vehicleValue}nTotal de impuestos: ${item.totalTaxes}nCosto total: ${item.totalCost}`);
+                });
+                
+                historyList.appendChild(historyItem);
+            });
+        }
+        
+        // Reiniciar formulario
+        function resetForm() {
+            document.getElementById('vehicleValue').value = '15000';
+            document.getElementById('freightCost').value = '1200';
+            document.getElementById('exchangeRate').value = '58.50';
+            document.getElementById('arancelType').value = 'cafta';
+            document.getElementById('year').value = '2022';
+            document.getElementById('vehicleSearch').value = '';
+            
+            // Recalcular seguro automáticamente
+            calculateInsurance();
+            
+            // Restablecer selector de tipo de vehículo
+            document.querySelectorAll('.vehicle-type-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.vehicle-type-btn[data-type="car"]').classList.add('active');
+            vehicleType = 'car';
+            
+            calculateTaxes();
+        }
+        
+        // También calcular cuando cambien los valores
+        document.getElementById('freightCost').addEventListener('input', calculateTaxes);
+        document.getElementById('exchangeRate').addEventListener('input', calculateTaxes);
+        document.getElementById('arancelType').addEventListener('change', calculateTaxes);
+        document.getElementById('year').addEventListener('input', calculateTaxes);
+        
+        // Inicializar la calculadora cuando se cargue la página
+        window.addEventListener('DOMContentLoaded', initCalculator);
+    </script>
+</body>
+</html>
